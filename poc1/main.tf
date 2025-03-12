@@ -10,5 +10,5 @@ resource "aws_instance" "rupesh" {
 }
 
 resource "aws_s3_bucket" "s3_bucket" {
-  bucket = "poc1rupeshbabli"
+  bucket = "poc1rupeshbabli123rup"
 }
