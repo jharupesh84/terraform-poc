@@ -1,69 +1,59 @@
-name: 'Terraform'
+name: Terraform CI/CD
 
 on:
-  workflow_dispatch:
-    inputs:
-      terraform_action:
-        type: choice
-        description: select terraform action
-        options:
-        - apply
-        - destroy
-        required: true
   push:
-    branches: [ "main","feature/*" ]
+    branches:
+      - feature/terrform_poc2
+  pull_request:
+    branches:
+      - main
 
 jobs:
   terraform:
-    name: 'Terraform'
-    env:
-      # AWS secrets
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_DEVOPS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_DEVOPS_SECRET_ACCESS_KEY }}
-
+    name: 'Terraform Lint, Security Check, and Deploy'
     runs-on: ubuntu-latest
-    environment: production
+
+    env:
+      AWS_REGION: 'us-east-1'
 
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
-      uses: actions/checkout@v3
+    - name: 'Checkout GitHub repository'
+      uses: actions/checkout@v2
 
-    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
-    - name: Terraform Init
-      uses: hashicorp/terraform-github-actions@master
+    - name: 'Configure AWS credentials'
+      uses: aws-actions/configure-aws-credentials@v1
       with:
-        tf_actions_version: 0.14.3
-        tf_actions_subcommand: 'init'
-        tf_actions_working_dir: '.'
-        tf_actions_comment: true
-        args: '-var="instance_type=t2.medium"'
-    
-    - name: Terraform plan
-      uses: hashicorp/terraform-github-actions@master
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: 'Set up Terraform'
+      uses: hashicorp/setup-terraform@v1
       with:
-        tf_actions_version: 0.14.3
-        tf_actions_subcommand: 'plan'
-        tf_actions_working_dir: '.'
-        tf_actions_comment: true
-        args: '-var="instance_type=t2.medium"'
-      
-    - name: Terraform apply
-      if: ${{ github.event.inputs.terraform_action == 'apply' }}
-      uses: hashicorp/terraform-github-actions@master
-      with:
-        tf_actions_version: 0.14.3
-        tf_actions_subcommand: ${{ github.event.inputs.terraform_action }}
-        tf_actions_working_dir: '.'
-        tf_actions_comment: true
-        args: '-auto-approve -var="instance_type=t2.medium"'
-    
-    - name: Terraform destroy
-      if: ${{ github.event.inputs.terraform_action == 'destroy' }}
-      uses: hashicorp/terraform-github-actions@master
-      with:
-        tf_actions_version: 0.14.3
-        tf_actions_subcommand: ${{ github.event.inputs.terraform_action }}
-        tf_actions_working_dir: '.'
-        tf_actions_comment: true
-        args: '-auto-approve -var="instance_type=t2.medium"'
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: 'Terraform Init'
+      run: |
+          cd poc1 
+          terraform init
+
+    - name: 'Terraform Format'
+      run: |
+           cd poc1
+           terraform fmt
+
+    - name: 'Terraform Validate'
+      run: |
+           cd poc1
+           terraform validate
+
+    - name: 'Terraform Plan'
+      run: |
+          cd poc1
+          terraform plan -out=tfplan
+
+    - name: 'Terraform Apply'
+      if: github.ref == 'refs/heads/main'
+      run: |
+          cd poc1 
+          terraform apply -auto-approve tfplan
