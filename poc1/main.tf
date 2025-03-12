@@ -1,7 +1,7 @@
 provider "aws" {
     region = "us-east-1"  
-    access_key = "your key"
-    secret_key = "your secret"
+    access_key     = "your key"
+    secret_key     = "your secret"
 }
 
 resource "aws_instance" "rupesh" {
